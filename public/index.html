@@ -5,12 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CORS 代理服务</title>
   <style>
-    /* 全局重置与字体 */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       background: #f0f2f5;
@@ -26,12 +21,8 @@
       max-width: 720px;
       width: 100%;
       border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       padding: 40px 32px;
-      transition: box-shadow 0.2s;
-    }
-    .card:hover {
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
     }
     h1 {
       font-size: 28px;
@@ -53,9 +44,6 @@
       margin: 24px 0 12px 0;
       color: #1f1f1f;
     }
-    h2:first-of-type {
-      margin-top: 0;
-    }
     .method-grid {
       display: grid;
       grid-template-columns: 80px 1fr;
@@ -66,19 +54,13 @@
       margin: 8px 0 16px 0;
       font-size: 14px;
     }
-    .method-grid .label {
-      font-weight: 600;
-      color: #3b3b3b;
-    }
-    .method-grid .value {
-      color: #1a1a1a;
-      word-break: break-all;
-    }
+    .method-grid .label { font-weight: 600; color: #3b3b3b; }
+    .method-grid .value { color: #1a1a1a; word-break: break-all; }
     .method-grid .value code {
       background: #eaecee;
       padding: 2px 8px;
       border-radius: 4px;
-      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-family: 'Cascadia Code', monospace;
       font-size: 13px;
     }
     .return-box {
@@ -89,13 +71,8 @@
       margin: 8px 0 16px 0;
       font-size: 14px;
     }
-    .return-box strong {
-      color: #0078d4;
-    }
-    .return-box ul {
-      margin: 8px 0 0 20px;
-      line-height: 1.6;
-    }
+    .return-box strong { color: #0078d4; }
+    .return-box ul { margin: 8px 0 0 20px; line-height: 1.6; }
     .example {
       background: #f8f9fa;
       padding: 14px 20px;
@@ -108,14 +85,12 @@
       color: #0078d4;
       text-decoration: none;
     }
-    .example a:hover {
-      text-decoration: underline;
-    }
+    .example a:hover { text-decoration: underline; }
     .example .url {
       background: #eaecee;
       padding: 2px 8px;
       border-radius: 4px;
-      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-family: 'Cascadia Code', monospace;
       font-size: 13px;
     }
     .footer {
@@ -127,55 +102,20 @@
       text-align: center;
     }
     @media (prefers-color-scheme: dark) {
-      body {
-        background: #1c1e20;
-        color: #e8e8e8;
-      }
-      .card {
-        background: #2b2d2f;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-      }
-      .subtitle {
-        color: #b0b0b0;
-        border-bottom-color: #3d4043;
-      }
-      h1, h2 {
-        color: #f0f0f0;
-      }
-      .method-grid {
-        background: #3a3c3f;
-      }
-      .method-grid .label {
-        color: #d0d0d0;
-      }
-      .method-grid .value {
-        color: #f0f0f0;
-      }
-      .method-grid .value code {
-        background: #4a4d50;
-        color: #f0f0f0;
-      }
-      .return-box {
-        background: #3a3c3f;
-        border-left-color: #4a9eff;
-      }
-      .return-box strong {
-        color: #4a9eff;
-      }
-      .example {
-        background: #3a3c3f;
-      }
-      .example a {
-        color: #4a9eff;
-      }
-      .example .url {
-        background: #4a4d50;
-        color: #f0f0f0;
-      }
-      .footer {
-        color: #909090;
-        border-top-color: #3d4043;
-      }
+      body { background: #1c1e20; color: #e8e8e8; }
+      .card { background: #2b2d2f; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+      .subtitle { color: #b0b0b0; border-bottom-color: #3d4043; }
+      h1, h2 { color: #f0f0f0; }
+      .method-grid { background: #3a3c3f; }
+      .method-grid .label { color: #d0d0d0; }
+      .method-grid .value { color: #f0f0f0; }
+      .method-grid .value code { background: #4a4d50; color: #f0f0f0; }
+      .return-box { background: #3a3c3f; border-left-color: #4a9eff; }
+      .return-box strong { color: #4a9eff; }
+      .example { background: #3a3c3f; }
+      .example a { color: #4a9eff; }
+      .example .url { background: #4a4d50; color: #f0f0f0; }
+      .footer { color: #909090; border-top-color: #3d4043; }
     }
   </style>
 </head>
@@ -198,7 +138,7 @@
     <div class="return-box">
       <strong>智能识别目标响应类型</strong>
       <ul>
-        <li><strong>JSON (application/json)</strong>  → 直接返回原始 JSON 数据（Content-Type: application/json）</li>
+        <li><strong>JSON (application/json)</strong> → 直接返回原始 JSON 数据（Content-Type: application/json）</li>
         <li><strong>其他文本</strong>（HTML, CSS, JS, XML, 纯文本等） → 返回原始文本（保持原 Content-Type）</li>
         <li><strong>二进制文件</strong>（图片, 音视频, PDF, 压缩包等） → 返回 Data URL（格式：<code>data:&lt;mime&gt;;base64,&lt;base64&gt;</code>，Content-Type: text/plain）</li>
       </ul>
@@ -207,25 +147,25 @@
     <h2>使用示例</h2>
     <div class="example">
       获取 GitHub 仓库图片（返回 Data URL）<br>
-      <a href="/api/https://raw.githubusercontent.com/vercel/vercel/main/icon.png">
-        /api/https://raw.githubusercontent.com/vercel/vercel/main/icon.png
+      <a href="/api?url=https://raw.githubusercontent.com/vercel/vercel/main/icon.png">
+        /api?url=https://raw.githubusercontent.com/vercel/vercel/main/icon.png
       </a>
     </div>
     <div class="example">
       调用 GitHub API（返回 JSON）<br>
-      <a href="/api/https://api.github.com/repos/vercel/vercel">
-        /api/https://api.github.com/repos/vercel/vercel
+      <a href="/api?url=https://api.github.com/repos/vercel/vercel">
+        /api?url=https://api.github.com/repos/vercel/vercel
       </a>
     </div>
     <div class="example">
-      获取 Gitee 仓库文件（返回 Data URL）<br>
-      <a href="/api/https://gitee.com/opengauss/openGauss-server/raw/master/README.md">
-        /api/https://gitee.com/opengauss/openGauss-server/raw/master/README.md
+      代理 Gitee 仓库文件（返回 Data URL）<br>
+      <a href="/api?url=https://gitee.com/opengauss/openGauss-server/raw/master/README.md">
+        /api?url=https://gitee.com/opengauss/openGauss-server/raw/master/README.md
       </a>
     </div>
 
     <div class="footer">
-      本服务为通用代理，仅转发请求，不存储任何数据。如有疑问，请查阅项目文档。
+      本服务为通用代理，仅转发请求，不存储任何数据。
     </div>
   </div>
 </body>
