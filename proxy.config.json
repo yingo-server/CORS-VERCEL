@@ -1,0 +1,41 @@
+{
+  "target": "https://example.com",
+
+  "routePrefix": "/__vp",
+
+  "external": "proxy",
+
+  "cookieMode": "scoped",
+
+  "injectRuntime": true,
+
+  "stripSecurityHeaders": true,
+
+  "rewrite": {
+    "html": true,
+    "css": true,
+    "js": true,
+    "svg": true,
+    "importmap": true,
+    "inlineHandlers": true,
+    "absoluteLiterals": true
+  },
+
+  "upstream": {
+    "timeoutMs": 25000,
+    "maxBodyBytes": 12582912,
+    "maxRewritesPerRequest": 50000,
+    "userAgent": null,
+    "headers": {},
+    "followRedirects": false
+  },
+
+  "block": {
+    "paths": ["/cdn-cgi/"],
+    "hosts": []
+  },
+
+  "allowPrivateHosts": false,
+
+  "debug": false
+}

@@ -1,0 +1,21 @@
+{
+  "name": "vproxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vercel-native universal reverse web proxy: rewrites HTML/CSS/JS paths so any site can be served from your own domain",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node dev/server.js",
+    "test": "node --test",
+    "test:unit": "node --test test/unit.*.test.js",
+    "test:e2e": "node --test test/e2e.test.js",
+    "lint:syntax": "node --check api/proxy.js && node --check lib/html.js && node --check lib/css.js && node --check lib/jsrewrite.js"
+  },
+  "dependencies": {
+    "acorn": "^8.14.0",
+    "iconv-lite": "^0.7.3"
+  }
+}
