@@ -119,5 +119,47 @@ MIT
 
 ## 9. Gate 中继
 
-访问受限的站点可经 `https://proxy.344977.xyz/{完整URL}` 中继（路径式 gate，不是网络代理）。
-本仓库的 git 远程已配置 gate 通道：`git push gate main`。
+`https://proxy.344977.xyz/{完整URL}` 是**路径式**中继，不是网络代理（不支持 `CONNECT`，
+不能用 `https_proxy=` 那种方式）。它只接受"把完整 URL 塞进路径"的形式：
+
+```bash
+# 取回任意受限站点的内容
+curl "https://proxy.344977.xyz/https://example.com/page.html"
+
+# 跳过域名白名单
+curl "https://proxy.344977.xyz/https://example.com/page.html?white=Y"
+```
+
+已知行为（实测）：对方返回的 `Location` 会被改写成 `/https:/host/path`（丢一个斜杠），
+所以必须跟随重定向才能取到内容 —— `curl -L` 或 git 的 `http.followRedirects=true`。
+
+**git 也能走它**（已实测克隆 + 推送成功）：
+
+```bash
+# 一次性推送
+GITHUB_TOKEN=xxx ./scripts/push-gate.sh
+
+# 或把 origin 指到 gate（本仓库默认就是这样）
+git remote set-url origin https://proxy.344977.xyz/https://github.com/yingo-server/MyYesterday.git
+git -c http.followRedirects=true -c "http.extraHeader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64)" push origin main
+
+# 改回直连
+./scripts/push-gate.sh --direct
+```
+
+局限（实测确认）：它偶尔对带认证头的请求返回 `431`（头过大），
+自动化里请带一次重试或直接回落直连。
+
+### 本代理自身怎么用 gate
+
+`proxy.config.json` 里 `external` 管的是**页面内跨源资源**，与本节的 gate 无关。
+如果目标站点在你这边访问困难，可以让本代理的上游请求经由 gate 中转 —— 在
+`upstream.headers` 之外另配一条前置中继即可（把 `target` 换成 gate 路径形式）：
+
+```json
+{ "target": "https://proxy.344977.xyz/https://example.com" }
+```
+
+注意：这种写法下 target 带了子路径，与"target 必须是站点根"的约束冲突；
+本项目的 `lib/config.js` 会**明确报错**而不是静默变形。需要时请改
+`allowPrivateHosts` 同理地放开该约束，或直接用 `external: direct` + gate 访问。
