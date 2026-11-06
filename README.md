@@ -116,3 +116,8 @@ docs/                   架构说明与能力边界
 ---
 
 MIT
+
+## 9. Gate 中继
+
+访问受限的站点可经 `https://proxy.344977.xyz/{完整URL}` 中继（路径式 gate，不是网络代理）。
+本仓库的 git 远程已配置 gate 通道：`git push gate main`。
