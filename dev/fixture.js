@@ -7,6 +7,7 @@
  */
 import http from 'node:http';
 import zlib from 'node:zlib';
+import { WebSocketServer } from 'ws';
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -189,6 +190,34 @@ document.title = "a string with /path but not a url";
     }
 
     return send(404, { 'content-type': 'text/html' }, '<html><body>404 not found</body></html>');
+  });
+
+  const wss = new WebSocketServer({
+    server,
+    perMessageDeflate: false,
+    handleProtocols: (protocols) => (protocols.has && protocols.has('p2') ? 'p2' : false),
+  });
+
+  wss.on('connection', (ws, req) => {
+    const path = (req.url || '').split('?')[0];
+    const echo = (data, isBinary) => { if (ws.readyState === 1) ws.send(data, { binary: isBinary }); };
+
+    if (path === '/ws/echo') {
+      ws.send(JSON.stringify({
+        origin: req.headers.origin || null,
+        cookie: req.headers.cookie || null,
+        referer: req.headers.referer || null,
+        path,
+      }));
+      ws.on('message', echo);
+      return;
+    }
+    if (path === '/ws/proto') {
+      ws.send('proto:' + (ws.protocol || ''));
+      ws.on('message', echo);
+      return;
+    }
+    ws.close(4404, 'unknown ws path');
   });
 
   return new Promise((resolve) => {

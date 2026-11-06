@@ -9,10 +9,11 @@
 
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import http from 'node:http';
 
 import { loadConfig, isBlockedPath, isBlockedHost } from '../lib/config.js';
 import {
-  resolveIncoming, buildUpstreamUrl, toProxyHref, isPrivateHost, b64uDecode,
+  resolveIncoming, buildUpstreamRequest, buildUpstreamUrl, toProxyHref, isPrivateHost, b64uDecode,
 } from '../lib/url.js';
 import { buildUpstreamHeaders, buildDownstreamHeaders, mapBackToUpstream } from '../lib/headers.js';
 import { fetchUpstream, readBodyCapped, UpstreamError } from '../lib/upstream.js';
@@ -21,6 +22,7 @@ import { rewriteHtml, renderNoticePage } from '../lib/html.js';
 import { rewriteCss } from '../lib/css.js';
 import { rewriteJs } from '../lib/jsrewrite.js';
 import { buildRuntimeScript } from '../lib/runtime/client.js';
+import { createUpgradeHandler } from '../lib/wsproxy.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -87,7 +89,7 @@ async function readRequestBody(req, limit) {
   return chunks.length ? Buffer.concat(chunks) : undefined;
 }
 
-export default async function handler(req, res) {
+export async function handler(req, res) {
   const started = Date.now();
   let cfg;
   try {
@@ -153,7 +155,9 @@ export default async function handler(req, res) {
       return;
     }
     try {
-      upstreamUrl = buildUpstreamUrl(cfg, routed.rawPath);
+      const built = buildUpstreamRequest(cfg, routed.rawPath);
+      upstreamUrl = built.url;
+      cfg = built.cfg;   // 路径覆盖时，本请求的"同源判定"随之切换
     } catch (err) {
       sendNotice(cfg, res, 400, '无法构造上游地址', [String(err.message), `path: ${routed.rawPath}`]);
       return;
@@ -336,3 +340,13 @@ export default async function handler(req, res) {
   res.statusCode = upstream.status;
   res.end(out);
 }
+
+/**
+ * Vercel 函数入口：默认导出 http.Server。
+ * Vercel Node runtime 对 http.Server 类型的默认导出提供原生 WebSocket 支持：
+ * 普通请求走 request 事件，带 Upgrade 的请求触发 upgrade 事件。
+ */
+const server = http.createServer(handler);
+server.on('upgrade', createUpgradeHandler(loadConfig));
+
+export default server;

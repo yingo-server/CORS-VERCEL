@@ -1,5 +1,5 @@
 {
-  "target": "https://example.com",
+  "target": "https://www.bing.com",
 
   "routePrefix": "/__vp",
 
@@ -10,6 +10,8 @@
   "injectRuntime": true,
 
   "stripSecurityHeaders": true,
+
+  "websocket": true,
 
   "rewrite": {
     "html": true,

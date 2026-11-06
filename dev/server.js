@@ -7,17 +7,17 @@
  */
 import http from 'node:http';
 import { startUpstream } from './fixture.js';
-import handler from '../api/proxy.js';
+import { handler, default as proxyServer } from '../api/proxy.js';
 
 const PROXY_PORT = Number(process.env.PROXY_PORT || 4200);
 const UPSTREAM_PORT = Number(process.env.UPSTREAM_PORT || 4100);
 
 await startUpstream(UPSTREAM_PORT);
 
+const prefixUrl = (u) => '/api/proxy' + (u.startsWith('/') ? u : '/' + u);
+
 const server = http.createServer(async (req, res) => {
-  const original = req.url || '/';
-  // 模拟 vercel.json: /:path -> /api/proxy/:path
-  req.url = '/api/proxy' + (original.startsWith('/') ? original : '/' + original);
+  req.url = prefixUrl(req.url || '/');
   try {
     await handler(req, res);
   } catch (err) {
@@ -29,6 +29,12 @@ const server = http.createServer(async (req, res) => {
       res.destroy();
     }
   }
+});
+
+// WebSocket：把原始 URL 前缀化后交给代理服务器的 upgrade 监听器
+server.on('upgrade', (req, socket, head) => {
+  req.url = prefixUrl(req.url || '/');
+  proxyServer.emit('upgrade', req, socket, head);
 });
 
 server.listen(PROXY_PORT, '127.0.0.1', () => {

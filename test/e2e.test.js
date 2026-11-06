@@ -1,11 +1,16 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
+import WebSocket from 'ws';
 
 import { startUpstream } from '../dev/fixture.js';
 import { startServer, closeServer, UPSTREAM_PORT, PROXY_PORT, UPSTREAM_ORIGIN } from './helpers.js';
 
-const handler = (await import('../api/proxy.js')).default;
+const proxyModule = await import('../api/proxy.js');
+const handler = proxyModule.handler;
+const proxyServer = proxyModule.default;
 const { b64uEncode, b64uDecode } = await import('../lib/url.js');
+const { hostHash } = await import('../lib/cookies.js');
 
 const BASE = `http://127.0.0.1:${PROXY_PORT}`;
 let upstream;
@@ -22,6 +27,12 @@ before(async () => {
       res.statusCode = 500;
       res.end('handler crash: ' + err.message);
     }
+  });
+  // 把升级请求也前缀化后交给代理服务器的 upgrade 监听器
+  proxy.on('upgrade', (req, socket, head) => {
+    const original = req.url || '/';
+    req.url = '/api/proxy' + (original.startsWith('/') ? original : '/' + original);
+    proxyServer.emit('upgrade', req, socket, head);
   });
 });
 
@@ -213,4 +224,117 @@ test('@import 与 importmap 页面', async () => {
 test('编码通道的 b64 能被客户端运行时正确还原', () => {
   const url = 'https://cdn.example.net/a/b.js?v=1#x';
   assert.equal(b64uDecode(b64uEncode(url)), url);
+});
+
+/* ---------------- WebSocket ---------------- */
+
+function wsOpen(ws) {
+  return new Promise((resolve, reject) => {
+    ws.once('open', resolve);
+    ws.once('error', reject);
+  });
+}
+
+/** open 前就挂监听：上游欢迎消息可能在 open 事件派发前已到达。 */
+function makeWsReader(ws, timeoutMs = 8000) {
+  const queue = [];
+  const waiters = [];
+  ws.on('message', (data, isBinary) => {
+    const w = waiters.shift();
+    if (w) w.resolve({ data, isBinary });
+    else queue.push({ data, isBinary });
+  });
+  return function read(timeout = timeoutMs) {
+    if (queue.length) return Promise.resolve(queue.shift());
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('ws message timeout')), timeout);
+      waiters.push({
+        resolve: (v) => { clearTimeout(timer); resolve(v); },
+      });
+    });
+  };
+}
+
+function wsMessage(ws, timeoutMs = 8000) {
+  throw new Error('use makeWsReader');
+}
+
+test('WebSocket：文本/二进制回显，Origin/Cookie 还原为上游视角', async () => {
+  const hash = hostHash(`127.0.0.1:${UPSTREAM_PORT}`);
+  const ws = new WebSocket(`ws://127.0.0.1:${PROXY_PORT}/ws/echo`, {
+    headers: { cookie: `__vp_${hash}_sid=abc123; other=1` },
+  });
+  ws.on('open', () => console.log('PROBE21 open'));
+  ws.on('error', (e) => console.log('PROBE21 error:', e.message));
+  ws.on('unexpected-response', (q,r) => console.log('PROBE21 unexpected', r.statusCode));
+  const read = makeWsReader(ws);
+  await wsOpen(ws);
+
+  const info = JSON.parse((await read()).data.toString());
+  assert.equal(info.origin, UPSTREAM_ORIGIN);
+  assert.equal(info.cookie, 'sid=abc123', '只转发属于该主机的 Cookie');
+  assert.equal(info.path, '/ws/echo');
+
+  ws.send('hello');
+  assert.equal((await read()).data.toString(), 'hello');
+
+  const bin = Buffer.from([0, 1, 2, 250, 255]);
+  ws.send(bin);
+  const back = await read();
+  assert.ok(Buffer.isBuffer(back.data), '二进制帧必须保持二进制');
+  assert.ok(back.data.equals(bin));
+
+  ws.close();
+});
+
+test('WebSocket：子协议协商透传', async () => {
+  const ws = new WebSocket(`ws://127.0.0.1:${PROXY_PORT}/ws/proto`, ['p1', 'p2']);
+  const read = makeWsReader(ws);
+  await wsOpen(ws);
+  assert.equal(ws.protocol, 'p2', '上游选定的子协议必须回传给浏览器');
+  assert.equal((await read()).data.toString(), 'proto:p2');
+  ws.close();
+});
+
+test('WebSocket：跨源编码通道', async () => {
+  const target = `ws://127.0.0.1:${UPSTREAM_PORT}/ws/echo`;
+  const ws = new WebSocket(`ws://127.0.0.1:${PROXY_PORT}/__vp/x/${b64uEncode(target)}`);
+  const read = makeWsReader(ws);
+  await wsOpen(ws);
+  const info = JSON.parse((await read()).data.toString());
+  assert.equal(info.origin, UPSTREAM_ORIGIN);
+  ws.close();
+});
+
+/* ---------------- 路径指定目标 ---------------- */
+
+test('路径覆盖：/http://host/path 切换目标，同源判定随之切换', async () => {
+  const res = await fetch(BASE + '/http://127.0.0.1:' + UPSTREAM_PORT + '/');
+  assert.equal(res.status, 200);
+  const html = await res.text();
+  // 资源应落到目标 host 的根路径（同源镜像），而不是编码通道
+  assert.match(html, /href="\/assets\/app\.css"/);
+  assert.match(html, /data-vp-base="http:\/\/127\.0\.0\.1:\d+\/"/);
+});
+
+test('路径覆盖：显式 http:// 协议形态', async () => {
+  // 无协议形态默认 https（真实站点都是 https）；本地 fixture 是纯 http，走显式协议
+  const res = await fetch(BASE + '/http://127.0.0.1:' + UPSTREAM_PORT + '/api/data');
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.ok, true);
+});
+
+test('路径覆盖：中继丢斜杠形态 /http:/host/path', async () => {
+  const res = await fetch(BASE + '/http:/127.0.0.1:' + UPSTREAM_PORT + '/api/data');
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.ok, true);
+});
+
+test('普通页面路径不受路径覆盖影响（hostlike 正则不误判）', async () => {
+  const res = await fetch(BASE + '/blog/post.html');
+  assert.equal(res.status, 404); // 上游 fixture 没有这个页面，但绝不能被当成目标覆盖
+  const res2 = await fetch(BASE + '/api/data');
+  assert.equal(res2.status, 200);
 });
