@@ -34,15 +34,28 @@ Vercel 平台的 payload 限制（与代码无关）。
 
 ## B. 语义限制（代理不等于"同一个站点"）
 
-### B1. `location.host` / `location.origin` 仍是代理域名
-`Location` 在规范里是 `[LegacyUnforgeable]`：脚本无法替换 `window.location`，
-也无法重新定义 `location.href` 的 setter。
-- 已缓解：静态改写会处理源码里写死的 `location.href = 'https://target/…'`；
-  垫片接管 `assign/replace`、`history.pushState`、点击与表单提交。
-- 仍无法覆盖：运行时**拼接**出来的绝对地址赋给 `location.href`
-  （例如 `location.href = 'https://' + host + '/login'`）。
-- 影响：需要"域名即身份"的逻辑（OAuth `redirect_uri` 白名单、
-  `document.domain` 校验）会失败。
+### B1. `location.*` 直接赋值跳转（浏览器安全硬边界）
+`Location` 在规范里是 `[LegacyUnforgeable]`：对象本身与 `href` 的 setter 都不可覆盖。
+实测 Chrome：`location.assign/replace` 是实例自有属性且 `configurable:false`，
+覆盖被静默忽略 —— 这是浏览器安全模型的硬边界，**所有纯前端代理（ultraproxy 等）同样无法拦截**。
+
+| 跳转方式 | 是否拦截 | 机制 |
+|---|---|---|
+| 点击 `<a href>` | ✅ | 捕获阶段 click + 静态改写 |
+| `<form>` 提交 | ✅ | submit 捕获 + action 改写 |
+| `history.pushState/replaceState` | ✅ | 方法包装 |
+| `fetch` / `XHR` / `sendBeacon` | ✅ | API 包装 |
+| 动态插入 `el.src=…` / innerHTML | ✅ | MutationObserver |
+| HTTP 30x 重定向 | ✅ | 服务端改写 Location |
+| `<meta refresh>` | ✅ | 静态改写 |
+| `window.open` | ✅ | 方法包装 |
+| **`location.assign/replace(...)`** | ⚠️ 尽力而为 | Chrome 拦不住，Safari/旧 Firefox 可拦 |
+| **`location.href = '…'` 直接赋值** | ❌ | setter 不可覆盖（规范如此） |
+| **`location = '…'`** | ❌ | 同上 |
+
+运行时拼接的绝对地址赋给 `location.href`（如 `location.href='https://'+host+'/login'`）
+会脱离代理。缓解：此类跳转多为广告/分享脚本；核心导航（链接/表单/重定向）已全覆盖。
+另外：需要"域名即身份"的逻辑（OAuth `redirect_uri` 白名单、`document.domain` 校验）不受影响地失败。
 
 ### B2. Service Worker 被禁用
 代理页面上注册 SW 会让它接管代理域，并缓存已改写的资源，

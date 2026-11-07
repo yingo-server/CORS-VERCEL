@@ -95,3 +95,35 @@ test('超大脚本直接跳过解析（不阻塞请求）', () => {
   const out = r(big);
   assert.equal(out, big);
 });
+
+/* ---------------- location 导航改写（跳转完整性） ---------------- */
+
+test('location.assign/replace 静态改写', () => {
+  assert.match(r('location.assign("https://cn.bing.com/search")'), /assign\("\/cn\.bing\.com\/search"\)/);
+  assert.match(r('location.replace("https://cdn.example.net/x")'), /replace\("\/cdn\.example\.net\/x"\)/);
+  assert.match(r('window.location.assign("https://www.bing.com/a")'), /assign\("\/www\.bing\.com\/a"\)/);
+});
+
+test('location.href= / location= / document.location 赋值', () => {
+  assert.match(r('location.href = "https://cn.bing.com/x"'), /location\.href = "\/cn\.bing\.com\/x"/);
+  assert.match(r('window.location.href = "https://www.bing.com/y"'), /location\.href = "\/www\.bing\.com\/y"/);
+  assert.match(r('document.location.href = "https://example.org/z"'), /location\.href = "\/example\.org\/z"/);
+  assert.match(r('location = "https://example.org/w"'), /location = "\/example\.org\/w"/);
+});
+
+test('运行时求值的 location 地址包装为垫片调用', () => {
+  assert.match(r('location.href = "https://cn.bing.com/" + path'), /__VPROXY__\.map\(/);
+  assert.match(r('location.href = `https://cn.bing.com/${p}`'), /__VPROXY__\.map\(/);
+  assert.match(r('location.assign(getLoginUrl())'), /__VPROXY__\.map\(getLoginUrl\(\)\)/);
+  assert.match(r('window.location.replace(buildReturnUrl())'), /__VPROXY__\.map\(/);
+});
+
+test('非 location 的同名调用不被包装（fetch 已由垫片运行时拦截）', () => {
+  assert.equal(r('fetch(getApiUrl())'), 'fetch(getApiUrl())');
+  assert.equal(r('someObj.assign(x)'), 'someObj.assign(x)');
+});
+
+test('相对/锚点/hash 不动', () => {
+  assert.equal(r('location.href = "/rel"'), 'location.href = "/rel"');
+  assert.equal(r('location.hash = "#x"'), 'location.hash = "#x"');
+});
