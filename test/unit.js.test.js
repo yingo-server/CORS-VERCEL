@@ -82,7 +82,7 @@ test('importmap 只改值不改键', () => {
   });
   const out = JSON.parse(rewriteImportMap(cfg, map, scriptUrl));
   assert.equal(out.imports.lodash, '/js/vendor/lodash.js');
-  assert.ok(out.imports.react.startsWith(P + '/x/'));
+  assert.equal(out.imports.react, '/esm.sh/react');
   assert.equal(out.scopes['/app/'].x, '/x.js');
 });
 

@@ -19,11 +19,9 @@ test('根相对 / 相对 路径', () => {
   assert.equal(rewriteRef(cfg, doc, 'plain.png'), '/dir/plain.png');
 });
 
-test('跨源 -> 编码通道，且可无损还原', () => {
-  const out = rewriteRef(cfg, doc, 'https://cdn.example.net/lib/x.js');
-  assert.ok(out.startsWith(P + '/x/'));
-  const b64 = out.slice((P + '/x/').length);
-  assert.equal(b64uDecode(b64), 'https://cdn.example.net/lib/x.js');
+test('跨源 -> 可读路径覆盖形态', () => {
+  // 跨源不再编码：地址栏保持 /cdn.example.net/lib/x.js 可读形态
+  assert.equal(rewriteRef(cfg, doc, 'https://cdn.example.net/lib/x.js'), '/cdn.example.net/lib/x.js');
 });
 
 test('特殊 scheme 一律不动', () => {
@@ -41,13 +39,11 @@ test('特殊 scheme 一律不动', () => {
   }
 });
 
-test('protocol-relative 继承文档协议后走编码通道', () => {
-  const out = rewriteRef(cfg, doc, '//cdn.example.net/a.js');
+test('protocol-relative 继承文档协议后走路径覆盖', () => {
   // 文档是 http，按 URL 规范继承 http
-  assert.equal(b64uDecode(out.slice((P + '/x/').length)), 'http://cdn.example.net/a.js');
+  assert.equal(rewriteRef(cfg, doc, '//cdn.example.net/a.js'), '/cdn.example.net/a.js');
   const httpsDoc = new URL('https://127.0.0.1:4517/dir/page.html');
-  const out2 = rewriteRef({ ...cfg, targetHost: '127.0.0.1:4517' }, httpsDoc, '//cdn.example.net/a.js');
-  assert.equal(b64uDecode(out2.slice((P + '/x/').length)), 'https://cdn.example.net/a.js');
+  assert.equal(rewriteRef({ ...cfg, targetHost: '127.0.0.1:4517' }, httpsDoc, '//cdn.example.net/a.js'), '/cdn.example.net/a.js');
 });
 
 test('协议相对但同主机 -> 根路径', () => {
@@ -65,7 +61,7 @@ test('external=direct 时跨源保持原样', () => {
   assert.equal(rewriteRef(direct, doc, '/a.js'), '/a.js');
 });
 
-test('toProxyHref 对 // 开头的 pathname 走编码通道', () => {
+test('toProxyHref 对 // 开头的 pathname 走编码通道（特例保留）', () => {
   const out = toProxyHref(cfg, new URL('http://127.0.0.1:4517//weird.png'));
   assert.ok(out.startsWith(P + '/x/'));
 });

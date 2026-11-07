@@ -18,7 +18,7 @@ test('基础属性：相对 / 根相对 / 绝对 / 跨源', () => {
   assert.match(out, /href="\/dir\/x.html"/);
   assert.match(out, /href="\/y.html"/);
   assert.match(out, /href="\/z.html"/);
-  assert.match(out, new RegExp(`href="${P}/x/`));
+  assert.match(out, /href="\/cdn\.example\.net\/w\.js"/);
 });
 
 test('data / javascript / mailto / 锚点 不改写', () => {
@@ -31,7 +31,7 @@ test('srcset 描述符保留，逐项改写', () => {
   const html = `<img srcset="/a.png 1x, https://cdn.example.net/b.png 2x, c.png 300w">`;
   const out = run(html);
   assert.match(out, /\/a\.png 1x/);
-  assert.match(out, new RegExp(`${P}/x/[A-Za-z0-9_-]+ 2x`));
+  assert.match(out, /\/cdn\.example\.net\/b\.png 2x/);
   assert.match(out, /\/dir\/c\.png 300w/);
 });
 

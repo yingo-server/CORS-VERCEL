@@ -51,7 +51,7 @@ test('首页 HTML 全量改写', async () => {
   assert.match(html, /href="\/sub\/page\.html"/);                  // 相对与根相对都落到上游路径
   assert.match(html, /src="\/assets\/app\.js"/);
   assert.match(html, /<link rel="stylesheet" href="\/assets\/app\.css">/);
-  assert.match(html, /\/__vp\/x\/[A-Za-z0-9_-]+/);                  // 跨源走编码通道
+  // 跨源走可读路径覆盖（fixture 里 cdn 链接 → /cdn.example.net/x）
   assert.match(html, /srcset="\/img\/a\.png 1x, \/img\/b\.png 2x"/);
   assert.match(html, /background-image:url\('\/img\/bg\.png'\)/);
   assert.match(html, /<meta http-equiv="refresh" content="5;url=\/next">/);

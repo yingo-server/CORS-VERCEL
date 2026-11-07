@@ -52,9 +52,9 @@ test('data: 与 #fragment 的 url 不动', () => {
   assert.equal(r(css), css);
 });
 
-test('跨源走编码通道', () => {
+test('跨源走可读路径覆盖', () => {
   const out = r('@font-face{src:url(https://cdn.example.net/f.woff2)}');
-  assert.match(out, new RegExp(`${P}/x/[A-Za-z0-9_-]+`));
+  assert.match(out, /url\("\/cdn\.example\.net\/f\.woff2"\)/);
 });
 
 test('自定义属性里的 url 也改写', () => {
