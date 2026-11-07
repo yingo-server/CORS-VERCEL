@@ -71,6 +71,13 @@ Vercel 平台的 payload 限制（与代码无关）。
 上游按 IP 做的风控、地域限制、速率限制都以 Vercel 的 IP 为准。
 `Origin` / `Referer` / `Host` 都已还原成上游视角，但 **源 IP 无法还原**。
 
+**实例（2026-11-07 线上实测）**：`cn.bing.com/search?q=…` 经代理访问被 302 到 `/?scope=web`
+（bing 反爬），而同请求从本机直连返回 200 结果页。逐项排除了请求头差异
+（代理头集合与直连一致、本机 node fetch 直连也 200）后确认：**bing 对数据中心 IP
+的无 Cookie /search 请求直接重定向**，属 IP 信誉风控，代理无法根治。
+缓解：`upstream.headers` 注入有效 Cookie、或对受影响站点改用浏览器 UA 组合；
+根治需住宅出口 IP（自建代理）。
+
 ### B5. 相对 URL 在"跨主机 base"下由 JS 运行时拼接时可能错
 `<base href="https://cdn.other.tld/dir/">` 这种写法：静态改写会把每条引用解析成绝对地址
 再编码，所以 HTML/CSS 层面完全正确；但如果页面脚本在那之后再做

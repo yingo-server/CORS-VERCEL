@@ -101,3 +101,8 @@ test('b64url 往返', () => {
   const s = 'https://例え.jp/路径?q=中文&x=1#片段';
   assert.equal(b64uDecode(b64uEncode(s)), s);
 });
+
+test('P3: /__vp/echo 带子路径也回显（诊断多段路由）', () => {
+  const r1 = resolveIncoming(cfg, '/api/proxy/__vp/echo/foo/bar?q=1');
+  assert.equal(r1.kind, 'echo');
+});
