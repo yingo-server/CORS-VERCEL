@@ -122,6 +122,15 @@ export async function handler(req, res) {
   }
 
   /* ---------------- 内部路由：诊断 ---------------- */
+  if (routed.kind === 'echo') {
+    sendJson(res, 200, {
+      receivedUrl: req.url,
+      routedKind: routed.kind,
+      rawPath: routed.rawPath ?? null,
+      note: 'echo diagnostics',
+    });
+    return;
+  }
   if (routed.kind === 'health') {
     sendJson(res, 200, {
       ok: true,
