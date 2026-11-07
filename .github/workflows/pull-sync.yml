@@ -16,16 +16,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pull upstream, strip CI, restore own workflow, force-push
+      - name: Pull upstream, strip CI (keep own workflow), force-push
         run: |
           git config user.name "mirror-bot"
           git config user.email "mirror-bot@users.noreply.github.com"
+          cp .github/workflows/pull-sync.yml /tmp/pull-sync.yml
           git remote add src https://github.com/yingo-server/MyYesterday.git
           git fetch src main
           git checkout -B sync FETCH_HEAD
           rm -rf .github
           mkdir -p .github/workflows
-          cp "$GITHUB_WORKFLOW_PATH" .github/workflows/pull-sync.yml
+          cp /tmp/pull-sync.yml .github/workflows/pull-sync.yml
           git add .github/workflows/pull-sync.yml
           git commit -aqm "mirror: sync from MyYesterday $(git rev-parse --short FETCH_HEAD)"
           git push origin sync:main --force
