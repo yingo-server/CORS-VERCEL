@@ -339,3 +339,18 @@ test('普通页面路径不受路径覆盖影响（hostlike 正则不误判）',
   const res2 = await fetch(BASE + '/api/data');
   assert.equal(res2.status, 200);
 });
+
+test('JS 导航改写：静态 assign/replace 与动态包装', async () => {
+  const jsRes = await fetch(BASE + '/assets/nav.js');
+  const js = await jsRes.text();
+  assert.match(js, /assign\("\/cdn\.example\.net\/from-js"\)/, 'assign 静态改写');
+  assert.match(js, /replace\("\/cdn\.example\.net\/from-replace"\)/, 'replace 静态改写');
+  assert.match(js, /__VPROXY__\.map\(getTarget\(\)\)/, '动态地址包装为垫片调用');
+});
+
+test('HTML 内联的 location 跳转也被改写', async () => {
+  const res = await fetch(BASE + '/jsnav.html');
+  const html = await res.text();
+  assert.match(html, /location\.assign\([\s\S]{0,30}\/cdn\.example\.net\/inline/, '内联 onclick');
+  assert.match(html, /location\.href = "\/cdn\.example\.net\/href-set"/, '内联 href=');
+});

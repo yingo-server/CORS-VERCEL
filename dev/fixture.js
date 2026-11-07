@@ -93,6 +93,23 @@ document.title = "a string with /path but not a url";
       return send(200, { 'content-type': 'application/javascript' }, js);
     }
 
+    if (p === '/jsnav.html') {
+      const html = `<!doctype html><html><head><script src="/assets/nav.js"></script></head>
+<body><button id="b" onclick="location.assign('https://cdn.example.net/inline')">inline</button>
+<script>window.setTimeout(function(){ location.href = "https://cdn.example.net/href-set"; }, 100000);</script>
+</body></html>`;
+      return send(200, { 'content-type': 'text/html' }, html);
+    }
+
+    if (p === '/assets/nav.js') {
+      const js = `function goByAssign(){ location.assign("https://cdn.example.net/from-js"); }
+function goByReplace(){ location.replace("https://cdn.example.net/from-replace"); }
+function goDynamic(){ location.href = getTarget(); }
+function getTarget(){ return "https://cdn.example.net/dynamic"; }
+window.goByAssign = goByAssign;`;
+      return send(200, { 'content-type': 'application/javascript' }, js);
+    }
+
     if (p === '/importmap.html') {
       const html = `<!doctype html><html><head>
 <script type="importmap">{"imports":{"lodash":"/vendor/lodash.js","x":"https://${hostHeader}/vendor/x.js"}}</script>
