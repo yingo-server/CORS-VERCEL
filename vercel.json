@@ -4,17 +4,20 @@
     "api/proxy.js": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "api/[...path].js": {
+      "maxDuration": 60,
+      "memory": 1024
     }
   },
-  "rewrites": [
-    { "source": "/", "destination": "/api/proxy/" },
-    { "source": "/:path*", "destination": "/api/proxy/:path*" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
       ]
     }
   ]
