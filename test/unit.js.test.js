@@ -108,7 +108,8 @@ test('location.href= / location= / document.location 赋值', () => {
   assert.match(r('location.href = "https://cn.bing.com/x"'), /location\.href = "\/cn\.bing\.com\/x"/);
   assert.match(r('window.location.href = "https://www.bing.com/y"'), /location\.href = "\/www\.bing\.com\/y"/);
   assert.match(r('document.location.href = "https://example.org/z"'), /location\.href = "\/example\.org\/z"/);
-  assert.match(r('location = "https://example.org/w"'), /location = "\/example\.org\/w"/);
+  // 审计#2：裸 location 赋值不再改写（无法区分全局与局部 shadow）
+  assert.equal(r('location = "https://example.org/w"'), 'location = "https://example.org/w"');
 });
 
 test('运行时求值的 location 地址包装为垫片调用', () => {
@@ -126,4 +127,38 @@ test('非 location 的同名调用不被包装（fetch 已由垫片运行时拦�
 test('相对/锚点/hash 不动', () => {
   assert.equal(r('location.href = "/rel"'), 'location.href = "/rel"');
   assert.equal(r('location.hash = "#x"'), 'location.hash = "#x"');
+});
+
+/* ---------------- 交叉审计修复回归 ---------------- */
+
+test('审计#1 局部 location shadow：整文件跳过改写', () => {
+  assert.equal(
+    r('function f(){ var location = {}; location.href = "https://x.com/a"; }'),
+    'function f(){ var location = {}; location.href = "https://x.com/a"; }');
+  assert.equal(
+    r('function h(location){ location.href = "https://x.com/a"; }'),
+    'function h(location){ location.href = "https://x.com/a"; }');
+  assert.equal(
+    r('const {location} = win; location.href = "https://x.com/b";'),
+    'const {location} = win; location.href = "https://x.com/b";');
+});
+
+test('审计#1 全局场景在 shadow 门控外仍正常改写', () => {
+  assert.match(r('location.assign("https://cn.bing.com/search")'), /assign\("\/cn\.bing\.com\/search"\)/);
+  assert.match(r('document.location.href = "https://example.org/z"'), /location\.href = "\/example\.org\/z"/);
+});
+
+test('审计#2 裸 location = 赋值不再改写', () => {
+  assert.equal(r('location = "https://example.org/w"'), 'location = "https://example.org/w"');
+});
+
+test('审计#3/#4 obj.location 不被误判为全局', () => {
+  assert.equal(r('obj.location.href = "https://x.com/a"'), 'obj.location.href = "https://x.com/a"');
+  assert.equal(r('obj.location.assign("/x"+q)'), 'obj.location.assign("/x"+q)');
+});
+
+test('审计#5 包装带 __VPROXY__ 存在性防御（脱离代理环境不崩）', () => {
+  const out = r('location.href = "https://a.com/" + p');
+  assert.match(out, /__VPROXY__ \? __VPROXY__\.map\(/);
+  assert.match(out, /: "https:\/\/a\.com\/" \+ p\)/);
 });
