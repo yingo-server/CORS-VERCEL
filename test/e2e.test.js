@@ -20,7 +20,8 @@ before(async () => {
   upstream = await startUpstream(UPSTREAM_PORT);
   proxy = await startServer(PROXY_PORT, async (req, res) => {
     const original = req.url || '/';
-    req.url = '/api/proxy' + (original.startsWith('/') ? original : '/' + original);
+    const raw = original.startsWith('/') ? original : '/' + original;
+    req.url = '/api/proxy.js?__vp_path=' + encodeURIComponent(raw.split('?')[0]) + '&__vp_query=' + encodeURIComponent(raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : '');
     try {
       await handler(req, res);
     } catch (err) {

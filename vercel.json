@@ -1,38 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/proxy.js": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/[...path].js": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  },
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex, nofollow"
-        }
-      ]
-    }
+  "builds": [
+    { "src": "api/proxy.js", "use": "@vercel/node" }
   ],
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/api/proxy/"
-    },
-    {
-      "source": "/:path*",
-      "destination": "/api/proxy/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/api/proxy/$1"
-    }
+  "routes": [
+    { "src": "/api/proxy", "dest": "/api/proxy.js" },
+    { "src": "/([^?]*)(?:\\?(.*))?", "dest": "/api/proxy.js?__vp_path=$1&__vp_query=$2" }
   ]
 }
